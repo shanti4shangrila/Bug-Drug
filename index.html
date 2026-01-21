@@ -16,7 +16,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;700;900&display=swap');
 
-        html, body { position: fixed; overflow: hidden; width: 100%; height: 100%; -webkit-tap-highlight-color: transparent; background: #0f172a; }
+        html, body { position: fixed; overflow: hidden; width: 100%; height: 100%; -webkit-tap-highlight-color: transparent; background: #0f172a; color: white; }
         #root { height: 100%; overflow: hidden; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
@@ -26,7 +26,6 @@
         body { font-family: 'Inter', sans-serif; }
         .header-font { font-family: 'Bebas Neue', cursive; letter-spacing: 0.05em; }
 
-        /* Neon Glow Effects */
         .neon-border { box-shadow: 0 0 15px rgba(34, 211, 238, 0.2); }
         .neon-text { text-shadow: 0 0 8px rgba(34, 211, 238, 0.5); }
         
@@ -39,14 +38,14 @@
             to { transform: translateY(0); opacity: 1; }
         }
 
-        .pearl-card { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        .pearl-card:active { transform: scale(0.95) rotate(-1deg); }
-
-        .bug-card {
-            background: linear-gradient(145deg, #1e293b, #0f172a);
-            border: 2px solid #334155;
-        }
+        .bug-card { background: linear-gradient(145deg, #1e293b, #0f172a); border: 2px solid #334155; }
         .bug-card-active { border-color: #22d3ee; box-shadow: 0 0 20px rgba(34, 211, 238, 0.1); }
+        
+        .slide-fade-in { animation: slideFadeIn 0.3s ease-out; }
+        @keyframes slideFadeIn {
+            from { opacity: 0; transform: translateX(10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
     </style>
 </head>
 <body>
@@ -55,7 +54,7 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
 
-        // --- ICON SYSTEM ---
+        // --- INTERNAL ICON SYSTEM ---
         const Icon = ({ name, size = 24, className = "" }) => {
             const icons = {
                 shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
@@ -68,13 +67,15 @@
                 search: "M11 19a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35",
                 alert: "M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01",
                 check: "M20 6 9 17l-5-5",
+                skull: "M9 10h.01M15 10h.01M12 2a8 8 0 00-8 8v12h16V10a8 8 0 00-8-8z",
+                target: "M12 22a10 10 0 100-20 10 10 0 000 20zm0-4a6 6 0 100-12 6 6 0 000 12zm0-2a2 2 0 100-4 2 2 0 000 4z",
                 flask: "M9 3h6M10 9h4M10 15h4M8 3v13a4 4 0 004 4 4 4 0 004-4V3",
-                dna: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
+                trophy: "M8 21h8M12 17V21M7 4h10M17 4v7a5 5 0 01-10 0V4",
                 right: "M9 18l6-6-6-6",
                 left: "M15 18l-6-6 6-6",
-                skull: "M9 10h.01M15 10h.01M12 2a8 8 0 00-8 8v12h16V10a8 8 0 00-8-8zM12 18h.01",
-                microscope: "M6 18h8M3 22h18M12 18a4 4 0 0 0 4-4V6H8v8a4 4 0 0 0 4 4zM12 2v4M7 8h10",
-                list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"
+                wind: "M17.7 7.7A2.5 2.5 0 1 1 20 12H4M19.3 16.3A2.5 2.5 0 1 0 17 12",
+                calc: "M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z",
+                brain: "M9.5 2A4.5 4.5 0 0 0 5 6.5a4.5 4.5 0 0 0 4.5 4.5 4.5 4.5 0 0 0 4.5-4.5A4.5 4.5 0 0 0 9.5 2Zm5 11a4.5 4.5 0 0 0-4.5 4.5 4.5 4.5 0 0 0 4.5 4.5 4.5 4.5 0 0 0 4.5-4.5 4.5 4.5 0 0 0-4.5-4.5Z"
             };
             return (
                 <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -83,94 +84,123 @@
             );
         };
 
-        // --- EXHAUSTIVE DATA TABLES ---
+        // --- THE DEFINITIVE EXHAUSTIVE DATABASE ---
         const INFECTIONS = [
-          { id: 'cap', name: 'CAP (Classic)', category: 'Lungs', icon: 'zap', escalate: 'Hypoxia / Sepsis' },
-          { id: 'cystitis', name: 'UTI (Uncomplicated)', category: 'Urinary', icon: 'shield', escalate: 'Flank Pain / Fever' },
-          { id: 'pyelo', name: 'Pyelonephritis', category: 'Urinary', icon: 'shield', escalate: 'Vomiting / Shock' },
-          { id: 'ssti', name: 'Cellulitis (Strep)', category: 'Skin', icon: 'bug', escalate: 'Crepitus / Dusky Skin' },
-          { id: 'cdiff', name: 'C. diff (The Scourge)', category: 'Gut', icon: 'alert', escalate: 'WBC > 15k / Megacolon' },
-          { id: 'meningitis', name: 'Meningitis (Acute)', category: 'Brain', icon: 'gauge', escalate: 'GCS Drop / Seizure' },
-          { id: 'lyme', name: 'Lyme (Ohio Summer)', category: 'Vector', icon: 'zap', escalate: 'Heart Block / Palsy' }
+          { id: 'resp_cap_001', name: 'CAP (Healthy Adult)', category: 'Respiratory', icon: 'wind', escalate: 'Hypoxia / Sepsis / CURB-65 ≥ 3' },
+          { id: 'resp_cap_002', name: 'CAP (Comorbidities)', category: 'Respiratory', icon: 'wind', escalate: 'Confusion / BUN > 20 / PSI IV' },
+          { id: 'resp_hcap', name: 'HCAP / VAP', category: 'Respiratory', icon: 'wind', escalate: 'Septic Shock / Multi-organ failure' },
+          { id: 'resp_sinusitis', name: 'Acute Bacterial Sinusitis', category: 'Respiratory', icon: 'zap', escalate: 'Orbital swelling / Severe Pain' },
+          { id: 'resp_pharyngitis', name: 'Acute Pharyngitis (Strep)', category: 'Respiratory', icon: 'stethoscope', escalate: 'Airway / Drooling / Peritonsillar' },
+          { id: 'uti_uncomp', name: 'Uncomplicated Cystitis', category: 'Urinary', icon: 'shield', escalate: 'Flank pain / Systemic Fever' },
+          { id: 'uti_pyelo', name: 'Acute Pyelonephritis', category: 'Urinary', icon: 'shield', escalate: 'Intractable vomiting / Bacteremia' },
+          { id: 'uti_prostatitis', name: 'Acute Bacterial Prostatitis', category: 'Urinary', icon: 'shield', escalate: 'Retention / Scrotal Toxicity' },
+          { id: 'ssti_cell', name: 'Cellulitis (Non-purulent)', category: 'Skin', icon: 'bug', escalate: 'Dusky skin / Crepitus / Rapid spread' },
+          { id: 'ssti_puru', name: 'Cutaneous Abscess (MRSA)', category: 'Skin', icon: 'bug', escalate: 'Systemic signs / Size > 5cm' },
+          { id: 'ssti_necfasc', name: 'Necrotizing Fasciitis', category: 'Skin', icon: 'shield', escalate: 'Surgical Emergency / Pain Out of Prop' },
+          { id: 'gi_cdiff', name: 'C. diff Infection', category: 'GI', icon: 'alert', escalate: 'Toxic Megacolon / WBC > 15k' },
+          { id: 'gi_divert', name: 'Acute Diverticulitis', category: 'GI', icon: 'alert', escalate: 'Free Air / Perforation / Abscess' },
+          { id: 'gi_sbp', name: 'SBP (Cirrhotic)', category: 'GI', icon: 'alert', escalate: 'Encephalopathy / Renal Fail' },
+          { id: 'cns_men', name: 'Bacterial Meningitis', category: 'Brain', icon: 'gauge', escalate: 'GCS Drop / Seizure / Papilledema' },
+          { id: 'blood_sep', name: 'Bacteremia / Sepsis', category: 'Blood', icon: 'zap', escalate: 'Hypotension / 1h Bundle Priority' },
+          { id: 'blood_endo', name: 'Infective Endocarditis', category: 'Heart', icon: 'zap', escalate: 'New Murmur / Embolic signs' },
+          { id: 'sti_gc', name: 'Uncomplicated Gonorrhea', category: 'STI', icon: 'target', escalate: 'Disseminated Joint Involvement' },
+          { id: 'sti_ct', name: 'Chlamydia Trachomatis', category: 'STI', icon: 'target', escalate: 'PID / Ectopic Risk' },
+          { id: 'special_neut', name: 'Neutropenic Fever', category: 'High-Risk', icon: 'alert', escalate: 'BP Drop / MASCC < 21' }
         ];
 
         const ANTIMICROBIALS = {
-          amoxicillin: { name: 'Amoxicillin', spectrum: 1, renalLimit: 10, monitor: 'Hypersensitivity' },
-          amox_clav: { name: 'Augmentin', spectrum: 2, renalLimit: 10, monitor: 'GI / Diarrhea' },
-          ceftriaxone: { name: 'Ceftriaxone', spectrum: 3, renalLimit: 0, monitor: 'Biliary Sludge' },
-          cefepime: { name: 'Cefepime', spectrum: 4, renalLimit: 20, monitor: 'Neuro / Seizure' },
-          vancomycin: { name: 'Vancomycin', spectrum: 4, renalLimit: 15, monitor: 'AUC / Trough' },
-          nitrofurantoin: { name: 'Macrobid', spectrum: 1, renalLimit: 30, monitor: 'CrCl < 30' },
-          doxycycline: { name: 'Doxycycline', spectrum: 2, renalLimit: 0, monitor: 'Photosens.' },
-          pip_tazo: { name: 'Zosyn', spectrum: 4, renalLimit: 20, monitor: 'Plt / Renal' }
+          amoxicillin: { name: 'Amoxicillin', spectrum: 1, renal: 10, monitor: 'Allergy / Rash' },
+          amox_clav: { name: 'Augmentin', spectrum: 2, renal: 10, monitor: 'GI / Diarrhea' },
+          pen_vk: { name: 'Penicillin VK', spectrum: 1, renal: 10, monitor: 'Standard' },
+          cephalexin: { name: 'Cephalexin (Keflex)', spectrum: 1, renal: 15, monitor: 'Standard' },
+          ceftriaxone: { name: 'Ceftriaxone', spectrum: 3, renal: 0, monitor: 'Biliary Sludge' },
+          vancomycin: { name: 'Vancomycin (IV)', spectrum: 4, renal: 15, monitor: 'AUC/Trough / Cr' },
+          pip_tazo: { name: 'Zosyn', spectrum: 4, renal: 20, monitor: 'Platelets / Cr' },
+          nitrofurantoin: { name: 'Macrobid', spectrum: 1, renal: 30, monitor: 'CrCl check' },
+          tmp_smx: { name: 'Bactrim DS', spectrum: 2, renal: 30, monitor: 'K+ / Renal' },
+          doxycycline: { name: 'Doxycycline', spectrum: 2, renal: 0, monitor: 'Skin / GI' },
+          levofloxacin: { name: 'Levaquin', spectrum: 4, renal: 30, monitor: 'QTc / Tendon' },
+          cefepime: { name: 'Cefepime', spectrum: 4, renal: 20, monitor: 'Neurotoxicity' },
+          fidaxomicin: { name: 'Fidaxomicin', spectrum: 1, renal: 0, monitor: 'Standard' },
+          meropenem: { name: 'Meropenem', spectrum: 5, renal: 20, monitor: 'Seizure Risk' },
+          clindamycin: { name: 'Clindamycin', spectrum: 2, renal: 0, monitor: 'C. diff Risk' },
+          metronidazole: { name: 'Metronidazole', spectrum: 1, renal: 0, monitor: 'Alcohol Avoid' }
         };
 
         const REGIMENS = {
-          cap: [{ drugId: 'amoxicillin', dose: '1g TID', duration: 5, note: 'Healthy adults.' }],
-          cdiff: [{ drugId: 'vancomycin', dose: '125mg PO qID', duration: 10, note: 'Oral only.' }],
-          lyme: [{ drugId: 'doxycycline', dose: '100mg BID', duration: 14, note: 'Central Ohio Standard.' }],
-          cystitis: [{ drugId: 'nitrofurantoin', dose: '100mg BID', duration: 5, note: 'CrCl > 30 required.' }]
+          resp_cap_001: [{ drugId: 'amoxicillin', dose: '1g TID', duration: 5, note: 'Outpatient healthy' }],
+          resp_cap_002: [{ drugId: 'amox_clav', dose: '875mg BID', duration: 7, note: '+ Azithro/Doxy' }],
+          resp_hcap: [{ drugId: 'pip_tazo', dose: '4.5g q6h', duration: 7, note: '+ Vancomycin' }],
+          gi_cdiff: [{ drugId: 'fidaxomicin', dose: '200mg BID', duration: 10, note: 'Superior to Vanc/Metro' }],
+          uti_uncomp: [{ drugId: 'nitrofurantoin', dose: '100mg BID', duration: 5, note: 'CrCl > 30 mandatory' }],
+          uti_pyelo: [{ drugId: 'ceftriaxone', dose: '1g Daily', duration: 7, note: 'IV to PO step-down' }],
+          cns_men: [{ drugId: 'ceftriaxone', dose: '2g q12h', duration: 14, note: 'High dose CNS + Vanc' }],
+          ssti_cell: [{ drugId: 'cephalexin', dose: '500mg qID', duration: 5, note: 'Targeting Strep' }],
+          ssti_necfasc: [{ drugId: 'meropenem', dose: '1g q8h', duration: 0, note: '+ Vanc + Clinda' }],
+          special_neut: [{ drugId: 'cefepime', dose: '2g q8h', duration: 0, note: 'Until ANC > 500' }],
+          sti_gc: [{ drugId: 'ceftriaxone', dose: '500mg IM x1', duration: 1, note: 'Monotherapy' }]
         };
 
-        const STEWARDSHIP_PEARLS = [
-          { title: "IV-to-PO Magic", desc: "If the gut works, use it. Oral reduces line risks and length of stay.", icon: "zap" },
-          { title: "The MRSA Myth", desc: "If the Nares PCR is negative, Vancomycin has no place in CAP. 98% NPV.", icon: "flask" },
-          { title: "Double Anaerobic", desc: "Metronidazole + Zosyn is redundant. Stop the Met.", icon: "alert" },
-          { title: "Allergy Audit", desc: "Most documented Penicillin allergies are not IgE-mediated. Re-verify.", icon: "shield" }
-        ];
-
         const PATHOGEN_PROFILES = [
-          { name: "S. aureus", class: "GPC (Clusters)", morphology: "Grape-like Clusters", sites: "Skin, Heart, Bone", status: "MRSA Risk" },
-          { name: "S. pyogenes", class: "GPC (Chains)", morphology: "Group A Strep", sites: "Pharynx, Skin, NecFasc", status: "Toxin-Risk" },
-          { name: "S. pneumoniae", class: "GPC (Diplococci)", morphology: "Lancet-shaped", sites: "Lungs, CNS, Sinus", status: "MDR-Pneumo" },
-          { name: "Enterococcus", class: "GPC (Short Chains)", morphology: "Oval Cocci", sites: "Urinary, Heart, Gut", status: "VRE Risk" },
-          { name: "E. coli", class: "GNR", morphology: "Facultative Rod", sites: "Urinary, GI, Sepsis", status: "ESBL Risk" },
-          { name: "K. pneumoniae", class: "GNR (Encapsulated)", morphology: "Plump Bacilli", sites: "Lungs, Urinary, Liver", status: "Carba-Risk" },
-          { name: "P. aeruginosa", class: "GNR (Non-ferm)", morphology: "Slender Rod", sites: "Lungs, ICU, Water", status: "Anti-pseud." },
-          { name: "Proteus mirabilis", class: "GNR", morphology: "Swarming Motility", sites: "Urinary (Stones)", status: "Urease+" },
-          { name: "H. influenzae", class: "GNR (Coccobaccilli)", morphology: "Pleomorphic", sites: "Upper Resp, Meninges", status: "HACEK" },
-          { name: "B. fragilis", class: "Anaerobe", morphology: "Obligate Rod", sites: "Intra-abdominal", status: "B-lactamase+" },
-          { name: "C. difficile", class: "Anaerobe (Spore)", morphology: "Drumstick Rod", sites: "Colon", status: "Post-Abx" },
-          { name: "L. pneumophila", class: "Atypical", morphology: "Intracellular", sites: "Lungs (Water-born)", status: "Hyponatremia" },
+          { name: "S. pneumoniae", class: "GPC (Diplococci)", morphology: "Lancet-shaped", sites: "Lungs, CNS", status: "MDR Ohio" },
+          { name: "S. aureus (MRSA)", class: "GPC (Clusters)", morphology: "Purple Grape-like", sites: "Skin, Blood", status: "Critical" },
+          { name: "E. coli", class: "GNR", morphology: "Pink Rod", sites: "Urinary, GI", status: "ESBL Risk" },
+          { name: "P. aeruginosa", class: "GNR (Non-ferm)", morphology: "Slender Rod", sites: "Lungs, ICU", status: "Anti-pseud." },
+          { name: "H. influenzae", class: "GNR (Coccobaccilli)", morphology: "Pink Pleomorphic", sites: "Resp, Epiglottis", status: "HACEK" },
+          { name: "C. difficile", class: "Anaerobe", morphology: "Drumstick Rod", sites: "Colon", status: "Toxic" },
+          { name: "B. burgdorferi", class: "Spirochete", morphology: "Spiral Filament", sites: "Skin, Heart", status: "Ohio Vector" },
           { name: "N. meningitidis", class: "GNC (Diplococci)", morphology: "Kidney-bean", sites: "CNS, Blood", status: "Emergency" },
-          { name: "N. gonorrhoeae", class: "GNC (Diplococci)", morphology: "Intracellular", sites: "STI, Joint", status: "Resistance" },
-          { name: "B. burgdorferi", class: "Spirochete", morphology: "Spiral Filament", sites: "Skin (EM), Joint", status: "Vector" },
-          { name: "R. rickettsii", class: "Atypical", morphology: "Intracellular", sites: "Endothelium (RMSF)", status: "Vascular" },
-          { name: "L. monocytogenes", class: "GP Rod", morphology: "Tumbling Motility", sites: "CNS (Neonates/>50y)", status: "Food-born" }
+          { name: "B. fragilis", class: "Anaerobe", morphology: "Obligate Rod", sites: "Intra-abdominal", status: "B-lactamase+" },
+          { name: "M. pneumoniae", class: "Atypical", morphology: "No Cell Wall", sites: "Respiratory", status: "Ohio Resistance" }
         ];
 
-        // --- SUB-COMPONENTS ---
+        const STEWARDSHIP_PEARLS = [
+          { title: "CURB-65 Logic", desc: "Confusion, Urea >20, RR ≥30, BP low, Age ≥65. Score ≥3 = Admit.", icon: "calc" },
+          { title: "IV-to-PO Magic", desc: "Stable vitals? Afebrile 24h? Gut works? Pull the line and switch to PO.", icon: "zap" },
+          { title: "Double Anaerobic", desc: "Zosyn + Metronidazole is redundant. Zosyn already covers anaerobes.", icon: "shield" },
+          { title: "The MRSA PCR", desc: "Negative Nares PCR = 98% NPV for pneumonia. Stop the Vancomycin.", icon: "flask" },
+          { title: "Allergy Audit", desc: "90% of documented PCN allergies are false. Re-verify to save lives.", icon: "alert" },
+          { title: "Short Course", desc: "5-7 days is sufficient for most CAP and UTI. Shorter is safer.", icon: "gauge" },
+          { title: "Culture Before", desc: "Obtain Blood/Urine cultures BEFORE the first dose to ensure yield.", icon: "history" }
+        ];
+
+        const CHALLENGE_CASES = [
+          { id: 1, title: "CAP Rounds", vignette: "45F smoker with cough. CXR shows LLL infiltrate. No comorbids.", options: ["Amoxicillin 1g TID", "Levofloxacin solo", "Zosyn IV"], correct: 0, note: "Correct! IDSA first-line for healthy adults." },
+          { id: 2, title: "Urinary Panic", vignette: "72F with frequency. BP 90/60, Temp 39.1. CrCl 25 mL/min.", options: ["Macrobid", "Ceftriaxone IV"], correct: 1, note: "Nitrofurantoin is unsafe with CrCl < 30." },
+          { id: 3, title: "Ohio Hiker", vignette: "28M in Hocking Hills. Expanding bullseye rash. Fever 101.", options: ["Cephalexin", "Doxycycline"], correct: 1, note: "Doxy is the gold standard for early Lyme." },
+          { id: 4, title: "Post-Abx Purge", vignette: "65F finished Clindamycin. Now 8 watery stools/day. WBC 16k.", options: ["Fidaxomicin", "Metronidazole PO"], correct: 0, note: "Fidaxomicin is 1st line per 2021 IDSA." },
+          { id: 5, title: "Toxic SSTI", vignette: "40F with pain 'out of proportion' to exam. Skin is dusky.", options: ["Keflex", "Zosyn + Vanc + Clinda"], correct: 1, note: "NecFasc requires antitoxin coverage (Clinda) + surgery." },
+          { id: 6, title: "Neutropenic", vignette: "55M on chemo. Temp 38.5, ANC 300. BP stable.", options: ["Cefepime 2g q8h", "Amoxicillin PO"], correct: 0, note: "High risk requires immediate anti-pseudomonal IV." },
+          { id: 7, title: "Stiff Neck", vignette: "19M student. Severe HA, neck stiffness. LP pending.", options: ["Ceftriaxone + Vanc", "Macrobid"], correct: 0, note: "Ceftriaxone has superior CNS penetration." },
+          { id: 8, title: "BPH Crisis", vignette: "70M with scrotal pain and prostatitis. Dysuria.", options: ["Levaquin 500 QD", "Nitrofurantoin"], correct: 0, note: "FQs have superior prostate tissue penetration." },
+          { id: 9, title: "The Heart Sound", vignette: "40M IVDU with new murmur and splinter hemorrhages.", options: ["Vancomycin", "Amoxicillin"], correct: 0, note: "Empiric IE coverage must target MRSA." },
+          { id: 10, title: "Lobar Breath", vignette: "50F COPD with increased sputum and dyspnea.", options: ["Augmentin", "Cipro"], correct: 0, note: "Augmentin targets H. flu and S. pneumo in AECOPD." }
+        ];
+
+        // --- UI COMPONENTS ---
 
         const ConsultView = ({ patient, setPatient, crCl, logAction }) => {
           const [selected, setSelected] = useState(INFECTIONS[0]);
           return (
-            <div className="p-4 space-y-6 slide-up h-full overflow-y-auto pb-40 scrollbar-hide">
+            <div className="p-4 space-y-6 h-full overflow-y-auto pb-40 scrollbar-hide slide-up">
               <div className="bg-slate-800/50 p-6 rounded-[2.5rem] border-2 border-slate-700 neon-border">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="header-font text-2xl text-cyan-400 neon-text">The Gatekeeper</h3>
-                  <div className={`px-4 py-1 rounded-full text-[10px] font-black uppercase ${crCl < 30 ? 'bg-red-500 text-white animate-pulse' : 'bg-cyan-400 text-slate-900'}`}>
-                    CrCl: {crCl}
-                  </div>
+                <div className="flex justify-between items-center mb-6 px-1">
+                  <h3 className="header-font text-2xl text-cyan-400">Gatekeeper</h3>
+                  <div className={`px-4 py-1 rounded-full text-[10px] font-black uppercase ${crCl < 30 ? 'bg-red-500' : 'bg-cyan-400 text-slate-900'}`}>CrCl: {crCl}</div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                   <div className="bg-slate-900/80 p-4 rounded-3xl border border-slate-700">
-                      <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Weight</p>
-                      <input type="number" value={patient.weight} onChange={e => setPatient({...patient, weight: e.target.value})} className="bg-transparent text-xl font-bold text-white w-full outline-none" />
-                   </div>
-                   <div className="bg-slate-900/80 p-4 rounded-3xl border border-slate-700">
-                      <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Creatinine</p>
-                      <input type="number" step="0.1" value={patient.creatinine} onChange={e => setPatient({...patient, creatinine: e.target.value})} className="bg-transparent text-xl font-bold text-white w-full outline-none" />
-                   </div>
+                   <div className="bg-slate-900/80 p-4 rounded-3xl border border-slate-700"><p className="text-[10px] font-black text-slate-500 uppercase mb-1">Weight (kg)</p><input type="number" value={patient.weight} onChange={e => setPatient({...patient, weight: e.target.value})} className="bg-transparent text-xl font-bold text-white w-full outline-none" /></div>
+                   <div className="bg-slate-900/80 p-4 rounded-3xl border border-slate-700"><p className="text-[10px] font-black text-slate-500 uppercase mb-1">Cr (mg/dL)</p><input type="number" step="0.1" value={patient.creatinine} onChange={e => setPatient({...patient, creatinine: e.target.value})} className="bg-transparent text-xl font-bold text-white w-full outline-none" /></div>
                 </div>
-                <button onClick={() => setPatient({...patient, isPediatric: !patient.isPediatric})} className={`w-full py-4 rounded-3xl font-black uppercase text-xs tracking-widest transition-all ${patient.isPediatric ? 'bg-cyan-400 text-slate-900 shadow-[0_0_20px_rgba(34,211,238,0.4)]' : 'bg-slate-700 text-slate-400'}`}>
-                    {patient.isPediatric ? "Peds Protocol Active" : "Adult Protocol Active"}
+                <button onClick={() => setPatient({...patient, isPediatric: !patient.isPediatric})} className={`w-full py-4 rounded-3xl font-black uppercase text-xs ${patient.isPediatric ? 'bg-cyan-400 text-slate-900' : 'bg-slate-700 text-slate-400'}`}>
+                    {patient.isPediatric ? "Pediatric Scaling Active" : "Adult Protocol Active"}
                 </button>
               </div>
 
               <div className="flex overflow-x-auto gap-3 scrollbar-hide -mx-4 px-4 py-2">
                  {INFECTIONS.map(inf => (
-                   <button key={inf.id} onClick={() => { setSelected(inf); logAction(`Guide: ${inf.name}`); }} className={`flex-shrink-0 px-6 py-4 rounded-3xl border-2 transition-all active:scale-90 ${selected.id === inf.id ? 'bg-cyan-400 border-cyan-400 text-slate-900 shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                     <div className="flex justify-center mb-1"><Icon name={inf.icon} size={16} /></div>
+                   <button key={inf.id} onClick={() => { setSelected(inf); logAction(`Guide: ${inf.name}`); }} className={`flex-shrink-0 px-6 py-4 rounded-3xl border-2 transition-all active:scale-95 ${selected.id === inf.id ? 'bg-cyan-400 border-cyan-400 text-slate-900 shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                     <Icon name={inf.icon} size={16} className="mx-auto mb-1" />
                      <p className="text-[11px] font-black uppercase whitespace-nowrap">{inf.name}</p>
                    </button>
                  ))}
@@ -179,30 +209,26 @@
               <div className="space-y-4">
                  {REGIMENS[selected.id]?.map((reg, i) => {
                    const drug = ANTIMICROBIALS[reg.drugId];
-                   const unsafe = crCl < drug.renalLimit;
+                   const unsafe = crCl < (drug?.renal || 0);
                    return (
-                     <div key={i} className={`p-6 rounded-[2.5rem] border-2 transition-all ${unsafe ? 'bg-red-500/10 border-red-500' : 'bg-slate-800/80 border-slate-700'}`}>
+                     <div key={i} className={`p-6 rounded-[2.5rem] border-2 transition-all ${unsafe ? 'bg-red-500/10 border-red-500' : 'bg-slate-800/80 border-slate-700 shadow-xl'}`}>
                         <div className="flex justify-between items-start mb-4">
-                           <h4 className="header-font text-2xl text-white tracking-tight">{drug.name}</h4>
-                           <div className="text-right">
-                              <p className="text-[10px] font-black text-slate-500 uppercase">Duration</p>
-                              <p className="text-xl font-black text-cyan-400 tracking-tighter">{reg.duration}d</p>
+                           <div>
+                             <span className="text-[9px] font-black bg-cyan-400/20 text-cyan-400 px-2 py-0.5 rounded-full uppercase mb-1 inline-block">{reg.scenario}</span>
+                             <h4 className="header-font text-2xl text-white tracking-tight">{drug?.name || "Target"}</h4>
                            </div>
+                           <div className="text-right"><p className="text-[10px] font-black text-slate-500 uppercase">Duration</p><p className="text-xl font-black text-cyan-400">{reg.duration || '?'}</p></div>
                         </div>
                         <div className="bg-slate-900/50 p-4 rounded-3xl border border-slate-700/50 mb-4">
-                           <p className="text-[10px] font-black text-slate-500 uppercase">Instructions</p>
-                           <p className="text-sm font-bold text-slate-200 mt-1">{reg.dose} — {reg.note}</p>
+                           <p className="text-sm font-bold text-slate-200">{reg.dose} — {reg.note}</p>
                         </div>
-                        <div className="flex items-center gap-2 px-1">
-                           <Icon name="history" size={14} className="text-cyan-400" />
-                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monitor: {drug.monitor}</span>
-                        </div>
-                        {unsafe && <div className="mt-4 p-3 bg-red-500 text-white rounded-2xl flex items-center gap-2 animate-bounce"><Icon name="shield" size={16} /><span className="text-[10px] font-black uppercase">Renal Warning</span></div>}
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Monitor: {drug?.monitor}</p>
+                        {unsafe && <div className="mt-4 p-3 bg-red-600 text-white rounded-2xl flex items-center gap-2 animate-bounce"><Icon name="shield" size={16}/><span className="text-[10px] font-black uppercase tracking-widest">Renal Warning</span></div>}
                      </div>
                    );
                  })}
-                 <div className="bg-amber-400 p-6 rounded-[2.5rem] text-slate-900">
-                    <div className="flex items-center gap-2 mb-2"><Icon name="alert" size={18} /><h4 className="header-font text-xl uppercase">Red Flags</h4></div>
+                 <div className="bg-amber-400 p-6 rounded-[2.5rem] text-slate-900 shadow-xl">
+                    <div className="flex items-center gap-2 mb-2"><Icon name="alert" size={18} /><h4 className="header-font text-xl uppercase tracking-widest">Escalate Trigger</h4></div>
                     <p className="text-sm font-black italic">"{selected.escalate}"</p>
                  </div>
               </div>
@@ -210,111 +236,86 @@
           );
         };
 
-        const VaultView = ({ logAction }) => {
+        const VaultView = () => {
             const [showAll, setShowAll] = useState(false);
             const [idx, setIdx] = useState(0);
-            const current = PATHOGEN_PROFILES[idx];
-
-            const toggleMode = () => {
-                setShowAll(!showAll);
-                logAction(showAll ? "Vault: Focus" : "Vault: List");
-            };
-
+            const bug = PATHOGEN_PROFILES[idx];
             return (
-                <div className="p-4 space-y-6 slide-up h-full overflow-y-auto pb-40 scrollbar-hide">
-                   <div className="bg-cyan-400 p-10 pt-16 rounded-[4rem] text-slate-900 shadow-2xl relative overflow-hidden">
-                      <div className="absolute -right-4 -top-4 opacity-20"><Icon name="skull" size={140} /></div>
-                      <h2 className="header-font text-5xl leading-none">The Rogue's<br/>Gallery</h2>
-                      <p className="text-slate-900 text-[10px] mt-2 uppercase font-black tracking-[0.3em] opacity-80">Pathogen Intel v5.2</p>
-                   </div>
-
-                   <div className="flex justify-between items-center px-4">
-                      <h3 className="header-font text-2xl text-cyan-400 uppercase tracking-widest">The List</h3>
-                      <button onClick={toggleMode} className="bg-slate-800 text-cyan-400 px-4 py-2 rounded-full text-[10px] font-black uppercase border-2 border-slate-700 active:scale-95 transition-all">
-                        {showAll ? <Icon name="list" size={12} className="inline mr-1"/> : <Icon name="layers" size={12} className="inline mr-1"/>}
-                        {showAll ? "Focus One" : "See All"}
-                      </button>
-                   </div>
-
-                   {!showAll ? (
-                     <div className="pearl-card slide-fade-in">
-                        <div className="bug-card bug-card-active p-8 rounded-[3.5rem] shadow-2xl relative overflow-hidden">
-                           <div className="absolute -right-8 -bottom-8 opacity-10 text-cyan-400"><Icon name="bug" size={120} /></div>
-                           <div className="flex justify-between items-start mb-6">
-                              <div>
-                                 <h4 className="header-font text-4xl text-white">{current.name}</h4>
-                                 <p className="text-[11px] font-black text-cyan-400 uppercase tracking-widest mt-1">{current.class}</p>
-                              </div>
-                              <span className="bg-red-500/20 text-red-500 px-4 py-1 rounded-full text-[10px] font-black uppercase border border-red-500/30">{current.status}</span>
-                           </div>
-                           <div className="space-y-4">
-                              <div className="bg-slate-900/80 p-5 rounded-3xl border border-slate-700">
-                                 <p className="text-[10px] font-black text-slate-500 uppercase mb-2">Micro-Morphology</p>
-                                 <p className="text-sm text-slate-200 font-bold">{current.morphology}</p>
-                              </div>
-                              <div className="bg-slate-900/80 p-5 rounded-3xl border border-slate-700">
-                                 <p className="text-[10px] font-black text-slate-500 uppercase mb-2">Primary Sites</p>
-                                 <p className="text-sm text-slate-200 font-bold">{current.sites}</p>
-                              </div>
-                           </div>
-                           <div className="flex gap-2 mt-10">
-                              <button onClick={() => setIdx(p => (p-1+PATHOGEN_PROFILES.length)%PATHOGEN_PROFILES.length)} className="flex-1 bg-slate-800 p-5 rounded-3xl flex items-center justify-center active:scale-90 border border-slate-700"><Icon name="left" className="text-white"/></button>
-                              <button onClick={() => setIdx(p => (p+1)%PATHOGEN_PROFILES.length)} className="flex-[3] bg-cyan-400 text-slate-900 p-5 rounded-3xl flex items-center justify-center gap-2 font-black uppercase text-xs tracking-widest active:scale-95 shadow-xl">Scan Next <Icon name="right" size={16}/></button>
-                           </div>
-                        </div>
-                     </div>
-                   ) : (
-                     <div className="grid grid-cols-1 gap-4 slide-fade-in">
-                        {PATHOGEN_PROFILES.map((bug, i) => (
-                          <div key={i} className="bug-card p-6 rounded-[2.5rem] shadow-xl">
-                             <div className="flex justify-between items-start mb-2">
-                                <div><h4 className="header-font text-2xl text-white">{bug.name}</h4><p className="text-[9px] font-black text-cyan-400 uppercase">{bug.class}</p></div>
-                                <span className="text-[9px] font-black text-red-500 border border-red-500/20 px-2 py-0.5 rounded-full">{bug.status}</span>
-                             </div>
-                             <p className="text-[11px] text-slate-400 leading-tight">Morph: {bug.morphology} | Sites: {bug.sites}</p>
-                          </div>
-                        ))}
-                     </div>
-                   )}
+              <div className="p-4 space-y-6 h-full overflow-y-auto pb-40 scrollbar-hide slide-up">
+                <div className="bg-cyan-400 p-10 pt-16 rounded-[4rem] text-slate-900 relative overflow-hidden shadow-2xl">
+                   <div className="absolute -right-4 -top-4 opacity-20"><Icon name="skull" size={140} /></div>
+                   <h2 className="header-font text-5xl leading-none">Rogue's Gallery</h2>
+                   <p className="text-slate-900 text-[10px] mt-2 uppercase font-black tracking-widest opacity-80 underline underline-offset-4">Micro-Intel Repository</p>
                 </div>
+                <div className="flex justify-between items-center px-4">
+                   <h3 className="header-font text-2xl text-cyan-400 uppercase tracking-widest">Profiles</h3>
+                   <button onClick={() => setShowAll(!showAll)} className="bg-slate-800 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase border border-slate-700 active:scale-95 transition-all">{showAll ? "Focus" : "See All"}</button>
+                </div>
+                {!showAll ? (
+                  <div className="slide-fade-in">
+                    <div className="bug-card bug-card-active p-8 rounded-[3.5rem] shadow-2xl relative overflow-hidden">
+                       <div className="flex justify-between items-start mb-6">
+                          <div><h4 className="header-font text-4xl text-white">{bug.name}</h4><p className="text-[11px] font-black text-cyan-400 uppercase tracking-widest">{bug.class}</p></div>
+                          <span className="bg-red-500/20 text-red-500 px-4 py-1 rounded-full text-[10px] font-black border border-red-500/30">{bug.status}</span>
+                       </div>
+                       <div className="space-y-4">
+                          <div className="bg-slate-900/80 p-5 rounded-3xl border border-slate-700"><p className="text-[10px] font-black text-slate-500 uppercase mb-2">Morphology</p><p className="text-sm text-slate-200 font-bold italic">{bug.morphology}</p></div>
+                          <div className="bg-slate-900/80 p-5 rounded-3xl border border-slate-700"><p className="text-[10px] font-black text-slate-500 uppercase mb-2">Primary Sites</p><p className="text-sm text-slate-200 font-bold">{bug.sites}</p></div>
+                       </div>
+                       <div className="flex gap-2 mt-10">
+                          <button onClick={() => setIdx(p => (p-1+PATHOGEN_PROFILES.length)%PATHOGEN_PROFILES.length)} className="flex-1 bg-slate-800 p-5 rounded-3xl border border-slate-700 flex items-center justify-center active:scale-90"><Icon name="left" className="text-white"/></button>
+                          <button onClick={() => setIdx(p => (p+1)%PATHOGEN_PROFILES.length)} className="flex-[3] bg-cyan-400 text-slate-900 p-5 rounded-3xl flex items-center justify-center font-black uppercase text-xs active:scale-95 shadow-xl">Scan Next Bug <Icon name="right" size={16}/></button>
+                       </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 slide-fade-in">
+                    {PATHOGEN_PROFILES.map((b, i) => (
+                      <div key={i} className="bug-card p-6 rounded-[2.5rem] shadow-xl">
+                        <div className="flex justify-between items-center mb-2">
+                           <h4 className="header-font text-2xl text-white">{b.name}</h4>
+                           <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest">{b.class}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 leading-tight">Morph: {b.morphology} | Sites: {b.sites}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
         };
 
-        const KnowledgeHub = () => {
+        const BrainsView = () => {
           const [showAll, setShowAll] = useState(false);
           const [idx, setIdx] = useState(0);
           const current = STEWARDSHIP_PEARLS[idx];
           return (
-            <div className="p-4 space-y-6 pb-40 h-full overflow-y-auto scrollbar-hide slide-up">
-               <div className="bg-indigo-600 p-10 pt-16 rounded-[4rem] text-white shadow-2xl relative overflow-hidden">
-                  <div className="absolute -right-4 -top-4 opacity-10"><Icon name="bug" size={140} /></div>
-                  <h2 className="header-font text-5xl leading-none">The<br/>Brains</h2>
-                  <p className="text-indigo-200 text-[10px] mt-2 uppercase font-black tracking-[0.3em] opacity-80 underline underline-offset-4">ID Wisdom v4.5</p>
-               </div>
-               <div className="flex justify-between items-center px-4">
-                  <h3 className="header-font text-2xl text-cyan-400 uppercase tracking-widest">Stewardship</h3>
-                  <button onClick={() => setShowAll(!showAll)} className="bg-slate-800 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase border border-slate-700">{showAll ? "Focus" : "See All"}</button>
+            <div className="p-4 space-y-6 h-full overflow-y-auto pb-40 scrollbar-hide slide-up">
+              <div className="bg-indigo-600 p-10 pt-16 rounded-[4rem] text-white relative overflow-hidden shadow-2xl">
+                 <div className="absolute -right-4 -top-4 opacity-10"><Icon name="brain" size={140} /></div>
+                 <h2 className="header-font text-5xl leading-none">The<br/>Brains</h2>
+                 <p className="text-indigo-200 text-[10px] mt-2 uppercase font-black tracking-widest opacity-80 underline underline-offset-4">Logic Repository v4.5</p>
+              </div>
+              <div className="flex justify-between items-center px-4">
+                  <h3 className="header-font text-2xl text-cyan-400 uppercase tracking-widest">Principles</h3>
+                  <button onClick={() => setShowAll(!showAll)} className="bg-slate-800 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase border border-slate-700 active:scale-95 transition-all">{showAll ? "Focus One" : "See All"}</button>
                </div>
                {!showAll ? (
-                 <div className="pearl-card slide-fade-in">
+                 <div className="slide-fade-in">
                    <div className="bg-slate-800 p-8 rounded-[3.5rem] border-2 border-slate-700 shadow-2xl relative overflow-hidden group">
-                      <div className="absolute -right-8 -bottom-8 opacity-5 text-cyan-400"><Icon name={current.icon} size={120} /></div>
-                      <div className="w-16 h-16 bg-cyan-400 text-slate-900 rounded-[1.5rem] flex items-center justify-center shadow-lg mb-8"><Icon name={current.icon} size={32} /></div>
-                      <h4 className="header-font text-3xl text-white mb-4">{current.title}</h4>
+                      <div className="w-16 h-16 bg-cyan-400 text-slate-900 rounded-[1.5rem] flex items-center justify-center mb-8"><Icon name={current.icon} size={32} /></div>
+                      <h4 className="header-font text-3xl text-white mb-4 tracking-tight">{current.title}</h4>
                       <p className="text-slate-400 leading-relaxed font-bold italic">"{current.desc}"</p>
                       <div className="flex gap-2 mt-10">
-                        <button onClick={() => setIdx(p => (p-1+STEWARDSHIP_PEARLS.length)%STEWARDSHIP_PEARLS.length)} className="flex-1 bg-slate-700 p-5 rounded-3xl flex items-center justify-center active:scale-90"><Icon name="left" className="text-white"/></button>
-                        <button onClick={() => setIdx(p => (p+1)%STEWARDSHIP_PEARLS.length)} className="flex-[3] bg-cyan-400 text-slate-900 p-5 rounded-3xl flex items-center justify-center gap-2 font-black uppercase text-xs tracking-widest active:scale-95 shadow-xl">Gimme Another <Icon name="right" size={16}/></button>
+                        <button onClick={() => setIdx(p => (p-1+STEWARDSHIP_PEARLS.length)%STEWARDSHIP_PEARLS.length)} className="flex-1 bg-slate-700 p-5 rounded-3xl flex items-center justify-center active:scale-90 border border-slate-600"><Icon name="left" className="text-white"/></button>
+                        <button onClick={() => setIdx(p => (p+1)%STEWARDSHIP_PEARLS.length)} className="flex-[3] bg-cyan-400 text-slate-900 p-5 rounded-3xl flex items-center justify-center font-black uppercase text-xs active:scale-95 shadow-xl">Unlock More <Icon name="right" size={16}/></button>
                       </div>
                    </div>
                  </div>
                ) : (
                  <div className="space-y-4 slide-fade-in">
                     {STEWARDSHIP_PEARLS.map((p, i) => (
-                      <div key={i} className="bg-slate-800 p-6 rounded-[2.5rem] border border-slate-700 flex gap-4">
-                         <div className="w-12 h-12 bg-slate-700 rounded-2xl flex items-center justify-center shrink-0 text-cyan-400"><Icon name={p.icon} size={20} /></div>
-                         <div><h4 className="font-black text-white text-sm">{p.title}</h4><p className="text-xs text-slate-400 mt-1 font-bold">{p.desc}</p></div>
-                      </div>
+                      <div key={i} className="bg-slate-800 p-6 rounded-[2.5rem] border border-slate-700 flex gap-4"><div className="w-12 h-12 bg-slate-700 rounded-2xl flex items-center justify-center shrink-0 text-cyan-400"><Icon name={p.icon} size={20} /></div><div><h4 className="font-black text-white text-sm tracking-widest">{p.title}</h4><p className="text-xs text-slate-400 mt-1 font-bold">{p.desc}</p></div></div>
                     ))}
                  </div>
                )}
@@ -322,30 +323,92 @@
           );
         };
 
-        const LogsView = ({ logs }) => (
-            <div className="p-4 space-y-6 slide-up h-full overflow-y-auto pb-40 scrollbar-hide">
-               <div className="bg-slate-950 p-10 pt-16 rounded-[4rem] text-white shadow-2xl relative overflow-hidden border border-slate-800">
-                  <div className="absolute -right-4 -top-4 opacity-10"><Icon name="history" size={140} /></div>
-                  <h2 className="header-font text-5xl leading-none">The<br/>Shift</h2>
-                  <p className="text-cyan-400 text-[10px] mt-2 uppercase font-black tracking-[0.3em] opacity-80">Audit Trail Active</p>
-               </div>
-               <div className="space-y-3">
-                  {logs.length > 0 ? logs.map((log, i) => (
-                    <div key={i} className="bg-slate-800/50 p-5 rounded-3xl border border-slate-700 flex justify-between items-center">
-                       <span className="text-white font-bold text-sm">{log.t}</span>
-                       <span className="text-[10px] font-black text-slate-500 font-mono">{log.time}</span>
-                    </div>
-                  )) : (
-                    <div className="p-20 text-center text-slate-700 uppercase font-black text-xs tracking-widest border-4 border-dashed border-slate-800 rounded-[3rem]">No History</div>
-                  )}
-               </div>
+        const ClinicalTriage = () => {
+          const [mode, setMode] = useState('qsofa');
+          const [checks, setChecks] = useState({});
+          const score = Object.values(checks).filter(v => v).length;
+          const reset = (m) => { setChecks({}); setMode(m); };
+
+          return (
+            <div className="p-4 space-y-6 h-full overflow-y-auto pb-40 scrollbar-hide slide-up">
+              <div className="bg-red-600 p-10 pt-16 rounded-[4rem] text-white shadow-2xl relative overflow-hidden">
+                 <div className="absolute -right-4 -top-4 opacity-20"><Icon name="gauge" size={140} /></div>
+                 <h2 className="header-font text-5xl leading-none">Code<br/>Acute</h2>
+                 <p className="text-red-100 text-[10px] mt-2 uppercase font-black tracking-widest">Decision Engine Online</p>
+              </div>
+              <div className="flex gap-2 pb-2 overflow-x-auto scrollbar-hide">
+                 {['qsofa','curb65','centor','mascc'].map(m => (
+                   <button key={m} onClick={() => reset(m)} className={`flex-shrink-0 px-6 py-2 rounded-full text-[10px] font-black uppercase border-2 transition-all ${mode === m ? 'bg-cyan-400 border-cyan-400 text-slate-900 shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>{m}</button>
+                 ))}
+              </div>
+              <div className="bg-slate-800/50 p-6 rounded-[2.5rem] border-2 border-slate-700">
+                <h3 className="header-font text-2xl text-cyan-400 mb-4">{mode.toUpperCase()} Criteria</h3>
+                {mode === 'qsofa' && [{id:'bp',l:'SBP ≤ 100 mmHg'},{id:'rr',l:'RR ≥ 22 /min'},{id:'ams',l:'Mental Status Change'}].map(item => (
+                   <button key={item.id} onClick={() => setChecks({...checks,[item.id]:!checks[item.id]})} className={`w-full flex justify-between items-center p-6 rounded-3xl border-2 mb-3 transition-all ${checks[item.id] ? 'bg-red-600 border-red-600 text-white shadow-lg' : 'bg-slate-900/50 border-slate-700'}`}>
+                      <span className="font-black uppercase text-xs">{item.l}</span>{checks[item.id] && <Icon name="check" size={24} />}</button>
+                ))}
+                {mode === 'curb65' && [{id:'c',l:'Confusion'},{id:'u',l:'Urea > 20'},{id:'r',l:'RR ≥ 30'},{id:'b',l:'BP < 90/60'},{id:'a',l:'Age ≥ 65'}].map(item => (
+                   <button key={item.id} onClick={() => setChecks({...checks,[item.id]:!checks[item.id]})} className={`w-full flex justify-between items-center p-6 rounded-3xl border-2 mb-3 transition-all ${checks[item.id] ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-slate-900/50 border-slate-700'}`}>
+                      <span className="font-black uppercase text-xs">{item.l}</span>{checks[item.id] && <Icon name="check" size={24} />}</button>
+                ))}
+                {mode === 'mascc' && [{id:'1',l:'No Severe Symptoms'},{id:'2',l:'No Hypotension'},{id:'3',l:'No COPD'},{id:'4',l:'No Fungal'},{id:'5',l:'Outpatient Status'}].map(item => (
+                   <button key={item.id} onClick={() => setChecks({...checks,[item.id]:!checks[item.id]})} className={`w-full flex justify-between items-center p-6 rounded-3xl border-2 mb-3 transition-all ${checks[item.id] ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-slate-900/50 border-slate-700'}`}>
+                      <span className="font-black uppercase text-xs">{item.l}</span>{checks[item.id] && <Icon name="check" size={24} />}</button>
+                ))}
+              </div>
+              <div className={`p-8 rounded-[3.5rem] text-center shadow-2xl transition-all ${score >= 2 ? 'bg-white text-red-600' : 'bg-slate-800 text-slate-400 border-2 border-slate-700'}`}>
+                 <h4 className="header-font text-4xl mb-2">Score: {score}</h4>
+                 <p className="text-xs font-black uppercase tracking-widest leading-relaxed">
+                   {mode === 'qsofa' ? (score >= 2 ? "High mortality risk. Sepsis bundle ASAP." : "Stable. Monitor closely.") :
+                    mode === 'curb65' ? (score >= 2 ? "High Risk. Consider Admission." : "Outpatient likely safe.") :
+                    mode === 'mascc' ? (score >= 3 ? "Potential Low-Risk Home Care." : "High-Risk: Admit for IV Therapy.") :
+                    (score >= 3 ? "Rapid Strep Test / Empiric coverage." : "Viral likely.")}
+                 </p>
+              </div>
             </div>
-        );
+          );
+        };
+
+        const RoundsView = ({ logAction }) => {
+          const [idx, setIdx] = useState(0);
+          const [feedback, setFeedback] = useState(null);
+          const current = CHALLENGE_CASES[idx];
+          return (
+            <div className="p-4 space-y-6 h-full overflow-y-auto pb-40 scrollbar-hide slide-up">
+              <div className="bg-emerald-600 p-10 pt-16 rounded-[4rem] text-white relative overflow-hidden shadow-2xl">
+                 <div className="absolute -right-4 -top-4 opacity-10"><Icon name="trophy" size={140} /></div>
+                 <h2 className="header-font text-5xl leading-none">The<br/>Rounds</h2>
+                 <p className="text-emerald-100 text-[10px] mt-2 uppercase font-black tracking-widest opacity-80 underline">Shift Mastery Simulation</p>
+              </div>
+              <div className="bg-slate-800 p-8 rounded-[3.5rem] border-2 border-slate-700 shadow-xl relative overflow-hidden">
+                <div className="flex justify-between items-center mb-6">
+                   <h4 className="header-font text-2xl text-cyan-400">Round {idx + 1}</h4>
+                   <span className="text-[10px] font-black text-slate-500 uppercase font-mono">{idx+1}/{CHALLENGE_CASES.length}</span>
+                </div>
+                <p className="text-slate-200 leading-relaxed font-bold mb-8 text-lg italic">"{current.vignette}"</p>
+                <div className="space-y-3">
+                  {current.options.map((opt, i) => (
+                    <button key={i} onClick={() => { setFeedback(current.correct === i); logAction(`Round: ${current.title}`); }} className={`w-full p-6 rounded-3xl border-2 transition-all text-left font-bold text-sm active:scale-95 ${feedback !== null && i === current.correct ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-900 border-slate-700 text-slate-400'}`}>{opt}</button>
+                  ))}
+                </div>
+                {feedback !== null && (
+                  <div className={`mt-8 p-6 rounded-[2rem] font-black uppercase text-center slide-up ${feedback ? 'bg-cyan-400 text-slate-900' : 'bg-red-500 text-white'}`}>
+                    {feedback ? "Logic Correct: " + current.note : "Check Logic: Consult the guide."}
+                    <button onClick={() => { setFeedback(null); setIdx(p => (p+1)%CHALLENGE_CASES.length); }} className="block w-full mt-4 bg-black/20 p-4 rounded-2xl text-xs tracking-widest">Next Patient Round</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        };
 
         const App = () => {
           const [activeTab, setActiveTab] = useState('consult');
           const [patient, setPatient] = useState({ age: 45, weight: 70, creatinine: 1.0, sex: 'male', isPediatric: false });
           const [logs, setLogs] = useState([]);
+          const [showLogs, setShowLogs] = useState(false);
+
+          const logAction = (t) => setLogs(p => [{t, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}, ...p].slice(0,10));
 
           const crCl = useMemo(() => {
             const factor = patient.sex === 'female' ? 0.85 : 1.0;
@@ -355,38 +418,59 @@
 
           return (
             <div className="max-w-md mx-auto bg-slate-900 h-full flex flex-col select-none overflow-hidden relative shadow-2xl">
+              <style>{`
+                html, body { position: fixed; overflow: hidden; width: 100%; height: 100%; -webkit-tap-highlight-color: transparent; }
+                #root { height: 100%; overflow: hidden; }
+                .scrollbar-hide::-webkit-scrollbar { display: none; }
+                .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+                .safe-top { padding-top: env(safe-area-inset-top, 0px); }
+                .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+                body { background: #0f172a; }
+              `}</style>
+
               <div className="bg-slate-950 p-6 pt-12 pb-8 rounded-b-[5rem] shadow-2xl safe-top shrink-0 border-b-2 border-slate-800 relative z-50">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h1 className="header-font text-4xl text-white italic leading-none neon-text">OhioID <span className="text-cyan-400 not-italic">ULTRA</span></h1>
-                    <p className="text-[9px] font-black text-cyan-400 uppercase tracking-[0.5em] mt-2 opacity-80">Acute Shift Assist</p>
+                    <h1 className="header-font text-4xl text-white italic leading-none neon-text tracking-tighter">OhioID <span className="text-cyan-400 not-italic">ULTRA</span></h1>
+                    <p className="text-[9px] font-black text-cyan-400 uppercase tracking-[0.5em] mt-2 opacity-80 italic">Acute Shift Engine</p>
                   </div>
-                  <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center border-2 border-slate-700 active:bg-cyan-400 transition-all cursor-pointer"><Icon name="bug" size={24} className="text-cyan-400" /></div>
+                  <button onClick={() => setShowLogs(!showLogs)} className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center border-2 border-slate-700 active:bg-cyan-400 transition-all cursor-pointer">
+                    <Icon name="history" size={24} className={showLogs ? "text-slate-900" : "text-cyan-400"} />
+                  </button>
                 </div>
               </div>
               
-              <main className="flex-1 overflow-hidden relative">
-                <div className="h-full w-full bg-[#0f172a]">
-                  {activeTab === 'consult' && <ConsultView patient={patient} setPatient={setPatient} crCl={crCl} logAction={(t) => setLogs(p => [{t, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}, ...p])} />}
-                  {activeTab === 'sepsis' && <div className="p-4 slide-up">
-                    <div className="bg-red-600 p-8 pt-12 rounded-[4rem] text-white shadow-2xl relative mb-4">
-                       <h2 className="header-font text-5xl tracking-tight leading-none">Code<br/>Sepsis</h2>
-                       <p className="text-red-100 text-[10px] mt-2 uppercase font-black tracking-widest">qSOFA Clinical Triage</p>
+              <main className="flex-1 overflow-hidden relative bg-[#0f172a]">
+                <div className="h-full w-full">
+                  {showLogs ? (
+                    <div className="p-4 slide-up h-full overflow-y-auto pb-40 scrollbar-hide">
+                       <h2 className="header-font text-5xl mb-6 text-white neon-text">Shift Rap-Sheet</h2>
+                       {logs.map((l, i) => (
+                         <div key={i} className="bg-slate-800 p-5 rounded-3xl border border-slate-700 flex justify-between items-center mb-3">
+                           <span className="font-black uppercase text-xs text-cyan-400">{l.t}</span><span className="font-mono text-[10px] text-slate-500 font-mono">{l.time}</span>
+                         </div>
+                       ))}
+                       {logs.length === 0 && <div className="p-20 text-center opacity-50 uppercase font-black text-xs border-2 border-dashed border-slate-800 rounded-3xl">No Data Recorded</div>}
+                       <button onClick={() => setShowLogs(false)} className="w-full mt-6 bg-cyan-400 text-slate-900 py-5 rounded-3xl font-black uppercase tracking-widest shadow-xl">Resume Rounds</button>
                     </div>
-                    <div className="p-10 text-center text-slate-500 italic font-black uppercase text-xs border-4 border-dashed border-slate-800 rounded-[4rem]">Logic Engine Online. Start Assessment below.</div>
-                  </div>}
-                  {activeTab === 'brief' && <KnowledgeHub />}
-                  {activeTab === 'vault' && <VaultView logAction={(t) => setLogs(p => [{t, time: new Date().toLocaleTimeString()}, ...p])} />}
-                  {activeTab === 'logs' && <LogsView logs={logs} />}
+                  ) : (
+                    <React.Fragment>
+                      {activeTab === 'consult' && <ConsultView patient={patient} setPatient={setPatient} crCl={crCl} logAction={logAction} />}
+                      {activeTab === 'sepsis' && <ClinicalTriage logAction={logAction} />}
+                      {activeTab === 'vault' && <VaultView logAction={logAction} />}
+                      {activeTab === 'brief' && <BrainsView logAction={logAction} />}
+                      {activeTab === 'challenge' && <RoundsView logAction={logAction} />}
+                    </React.Fragment>
+                  )}
                 </div>
               </main>
 
               <nav className="shrink-0 bg-slate-950/90 backdrop-blur-2xl border-t-2 border-slate-800 px-6 pt-4 pb-12 flex justify-between items-center z-50 rounded-t-[4rem] shadow-[0_-10px_50px_rgba(0,0,0,0.5)] safe-bottom">
-                <button onClick={() => setActiveTab('consult')} className={`flex flex-col items-center gap-1 transition-all active:scale-75 ${activeTab === 'consult' ? 'text-cyan-400' : 'text-slate-600'}`}><Icon name="stethoscope" size={28} /><span className="header-font text-xs uppercase tracking-widest">Guide</span></button>
-                <button onClick={() => setActiveTab('brief')} className={`flex flex-col items-center gap-1 transition-all active:scale-75 ${activeTab === 'brief' ? 'text-cyan-400' : 'text-slate-600'}`}><Icon name="book" size={28} /><span className="header-font text-xs uppercase tracking-widest">Brains</span></button>
-                <div className="h-20 w-20 bg-cyan-400 rounded-full flex items-center justify-center -mt-24 shadow-[0_0_30px_rgba(34,211,238,0.3)] border-8 border-slate-900 active:scale-95 active:rotate-12 transition-all cursor-pointer" onClick={() => setActiveTab('sepsis')}><Icon name="gauge" size={36} className="text-slate-900" /></div>
-                <button onClick={() => setActiveTab('vault')} className={`flex flex-col items-center gap-1 transition-all active:scale-75 ${activeTab === 'vault' ? 'text-cyan-400' : 'text-slate-600'}`}><Icon name="dna" size={28}/><span className="header-font text-xs uppercase tracking-widest">Vault</span></button>
-                <button onClick={() => setActiveTab('logs')} className={`flex flex-col items-center gap-1 transition-all active:scale-75 ${activeTab === 'logs' ? 'text-cyan-400' : 'text-slate-600'}`}><Icon name="history" size={28}/><span className="header-font text-xs uppercase tracking-widest">History</span></button>
+                <button onClick={() => {setActiveTab('consult'); setShowLogs(false);}} className={`flex flex-col items-center gap-1 active:scale-75 ${activeTab === 'consult' ? 'text-cyan-400' : 'text-slate-600'}`}><Icon name="stethoscope" size={28} /><span className="header-font text-[10px] uppercase tracking-widest">Guide</span></button>
+                <button onClick={() => {setActiveTab('vault'); setShowLogs(false);}} className={`flex flex-col items-center gap-1 active:scale-75 ${activeTab === 'vault' ? 'text-cyan-400' : 'text-slate-600'}`}><Icon name="bug" size={28} /><span className="header-font text-[10px] uppercase tracking-widest">Vault</span></button>
+                <div className="h-20 w-20 bg-cyan-400 rounded-full flex items-center justify-center -mt-24 shadow-[0_0_30px_rgba(34,211,238,0.3)] border-8 border-slate-900 active:scale-95 active:rotate-12 transition-all cursor-pointer z-[100]" onClick={() => {setActiveTab('sepsis'); setShowLogs(false);}}><Icon name="gauge" size={36} className="text-slate-900" /></div>
+                <button onClick={() => {setActiveTab('brief'); setShowLogs(false);}} className={`flex flex-col items-center gap-1 active:scale-75 ${activeTab === 'brief' ? 'text-cyan-400' : 'text-slate-600'}`}><Icon name="brain" size={28}/><span className="header-font text-[10px] uppercase tracking-widest">Brains</span></button>
+                <button onClick={() => {setActiveTab('challenge'); setShowLogs(false);}} className={`flex flex-col items-center gap-1 active:scale-75 ${activeTab === 'challenge' ? 'text-cyan-400' : 'text-slate-600'}`}><Icon name="trophy" size={28}/><span className="header-font text-[10px] uppercase tracking-widest">Rounds</span></button>
               </nav>
             </div>
           );
